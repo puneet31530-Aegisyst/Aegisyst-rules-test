@@ -1,0 +1,137 @@
+title: Aegisyst - Ransomware Inhibit Recovery (T1486)q
+id: 7c6b4d6f-2c7f-4a5f-bb2c-0e9f7c1e9a2d
+status: experimental
+description: Detects common ransomware encryption behaviors such as use of vssadmin/wmic/bcdedit to inhibit recovery,
+  rapid file renames to typical ransomware extensions, and use of built-in crypto/compression utilities
+  consistent with mass encryption activity.
+author: ChatGPT
+date: 2026-08-11
+references:
+  - https://attack.mitre.org/techniques/T1486/
+tags:
+  - attack.impact
+  - attack.t1486
+logsource:
+  product: windows
+  category: process_creation
+  definition: 'Sysmon EventID 1 and/or Windows Security EventID 4688'
+detection:
+  selection_inhibit_recovery_vssadmin:
+    Image|contains:
+      - 'vssadmin.exe'
+    CommandLine|contains:
+      - 'delete shadows'
+      - 'delete shadowcopies'
+      - 'resize shadowstorage'
+      - 'shadows /all'
+      - '/quiet'
+  selection_inhibit_recovery_wmic:
+    Image|endswith:
+      - 'wmic.exe'
+    CommandLine|contains:
+      - 'shadowcopy delete'
+      - 'shadowcopy call delete'
+  selection_inhibit_recovery_powershell_wmi:
+    Image|endswith:
+      - 'powershell.exe'
+      - 'pwsh.exe'
+    CommandLine|contains:
+      - 'Win32_ShadowCopy'
+      - 'Delete()'
+      - 'Get-WmiObject'
+      - 'Get-CimInstance'
+      - 'Remove-WmiObject'
+  selection_inhibit_recovery_bcdedit:
+    Image|endswith:
+      - '\\bcdedit.exe'
+    CommandLine|contains:
+      - ' recoveryenabled'
+      - ' bootstatuspolicy'
+    CommandLine|contains|all:
+      - 'set'
+    condition: 1 of selection_*
+  selection_ext:
+    TargetFilename|endswith:
+      - '.lock'
+      - '.locked'
+      - '.encrypt'
+      - '.encrypted'
+      - '.crypto'
+      - '.crypt'
+      - '.cryp'
+      - '.enc'
+      - '.ryk'
+      - '.ryuk'
+      - '.conti'
+      - '.revil'
+      - '.sodinokibi'
+      - '.maze'
+      - '.egregor'
+      - '.blackmatter'
+      - '.lockbit'
+      - '.lockbit2'
+      - '.lockbit3'
+      - '.babuk'
+      - '.dharma'
+      - '.phobos'
+      - '.clop'
+      - '.akira'
+      - '.play'
+      - '.qs'
+      - '.qilin'
+  filter_common_temp:
+    TargetFilename|contains:
+      - '\\Windows\\Temp\\'
+      - '\\AppData\\Local\\Temp\\'
+      - '\\INetCache\\'
+  condition: selection_ext and not filter_common_temp
+falsepositives:
+  - Legitimate files that naturally end with one of the listed extensions (rare)
+  - Security testing / ransomware simulation tools
+level: high
+
+---
+
+title: Built-in Utility Abuse Potentially Associated with Mass Encryption (cipher/compact/7z) (T1486)
+id: 6b8a2c1a-4f22-4c19-9b8e-9cdb5c2d1f61
+status: experimental
+description: |
+  Detects suspicious use of built-in encryption/compression utilities often seen in ransomware operations,
+  including cipher.exe wiping free space, compact.exe mass compression, or 7z.exe being used for bulk processing.
+author: ChatGPT
+date: 2026-08-11
+references:
+  - https://attack.mitre.org/techniques/T1486/
+tags:
+  - attack.impact
+  - attack.t1486
+logsource:
+  product: windows
+  category: process_creation
+  definition: 'Sysmon EventID 1 and/or Windows Security EventID 4688'
+detection:
+  selection_cipher_wipe:
+    Image|endswith:
+      - '\\cipher.exe'
+    CommandLine|contains:
+      - ' /w:'
+  selection_compact_mass:
+    Image|endswith:
+      - '\\compact.exe'
+    CommandLine|contains|all:
+      - ' /c'
+  selection_7z_bulk:
+    Image|endswith:
+      - '\\7z.exe'
+      - '\\7za.exe'
+      - '\\7zr.exe'
+    CommandLine|contains:
+      - ' a '
+      - ' -p'
+      - ' -mhe'
+      - ' -r'
+  condition: 1 of selection_*
+falsepositives:
+  - Administrative maintenance using cipher /w
+  - Legitimate bulk compression/archiving activities
+level: medium
