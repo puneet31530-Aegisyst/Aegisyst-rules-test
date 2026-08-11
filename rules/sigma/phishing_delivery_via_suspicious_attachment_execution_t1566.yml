@@ -1,0 +1,93 @@
+title: Aegisyst - Phishing Delivery (T1566)
+id: 3c8db7fa-3f31-4b3d-9b6c-7f7df3f7f6b5
+status: experimental
+description: >
+  Detects common phishing outcomes where a user executes or opens suspicious email-delivered attachments
+  (Office docs with macros, scripts, archives) or launches them from typical download/email cache locations.
+  This rule focuses on endpoint process creation patterns commonly associated with phishing delivery (MITRE ATT&CK T1566).
+author: OpenAI
+date: 2026-08-11
+references:
+  - https://attack.mitre.org/techniques/T1566/
+tags:
+  - attack.t1566
+  - attack.initial_access
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_script_hosts:
+    Image|endswith:
+      - '\\wscript.exe'
+      - '\\cscript.exe'
+      - '\\mshta.exe'
+      - '\\rundll32.exe'
+      - '\\regsvr32.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+      - '\\cmd.exe'
+      - '\\scrcons.exe'
+  selection_office:
+    Image|endswith:
+      - '\\winword.exe'
+      - '\\excel.exe'
+      - '\\powerpnt.exe'
+      - '\\outlook.exe'
+  selection_archive_openers:
+    Image|endswith:
+      - '\\7z.exe'
+      - '\\7zG.exe'
+      - '\\winrar.exe'
+      - '\\rar.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+  selection_suspicious_locations:
+    CommandLine|contains:
+      - '\\Users\\'
+      - '\\AppData\\Local\\Temp\\'
+      - '\\AppData\\Local\\Microsoft\\Windows\\INetCache\\'
+      - '\\AppData\\Local\\Microsoft\\Windows\\Temporary Internet Files\\'
+      - '\\Downloads\\'
+      - '\\Desktop\\'
+      - '\\OneDrive\\'
+      - '\\AppData\\Roaming\\Microsoft\\Windows\\Recent\\'
+      - '\\AppData\\Roaming\\Microsoft\\Windows\\SendTo\\'
+      - '\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\'
+  selection_suspicious_extensions:
+    CommandLine|contains:
+      - '.hta'
+      - '.js'
+      - '.jse'
+      - '.vbs'
+      - '.vbe'
+      - '.wsf'
+      - '.wsh'
+      - '.ps1'
+      - '.psm1'
+      - '.psd1'
+      - '.lnk'
+      - '.iso'
+      - '.img'
+      - '.vhd'
+      - '.vhdx'
+      - '.zip'
+      - '.rar'
+      - '.7z'
+      - '.docm'
+      - '.xlsm'
+      - '.pptm'
+  selection_office_child_scripting:
+    ParentImage|endswith:
+      - '\\winword.exe'
+      - '\\excel.exe'
+      - '\\powerpnt.exe'
+      - '\\outlook.exe'
+    Image|endswith:
+      - '\\wscript.exe'
+      - '\\cscript.exe'
+      - '\\mshta.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+      - '\\cmd.exe'
+      - '\\rundll32.exe'
+  condition: selection_script_hosts AND selection_suspicious_locations) OR (selection_office AND selection_suspicious_locations) OR (selection_archive_openers AND selection_suspicious_locations) OR selection_office_child_scripting ) 
