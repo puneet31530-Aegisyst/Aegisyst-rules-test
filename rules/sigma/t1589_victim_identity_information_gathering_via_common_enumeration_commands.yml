@@ -1,0 +1,29 @@
+title: T1589 Victim Identity Information Gathering via Common Enumeration Commands
+id: 8b41a6e3-0f78-4f2f-bd6e-47f4c50c0a6f
+status: experimental
+description: Detects execution of common commands used to enumerate local identity information (users, groups, domain accounts) consistent with MITRE ATT&CK T1589.
+author: Detection Engineering
+date: 2026-07-26
+tags:
+  - attack.discovery
+  - attack.t1589
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_identity_commands: 
+    process_exec|contains: 
+      - 'net user ' 
+      - 'net localgroup' 
+      - 'whoami /all' 
+    process|endswith: 
+      - '\\net.exe' 
+      - '\\net1.exe' 
+      - '\\dsquery.exe' 
+      - '\\dsget.exe' 
+      - '\\whoami.exe' 
+  filter_it_management: 
+    ParentImage|endswith: 
+      - 'sccm_agent.exe' 
+      - 'kaseya_agent.exe' 
+  condition: selection_identity_commands AND NOT filter_it_management 
