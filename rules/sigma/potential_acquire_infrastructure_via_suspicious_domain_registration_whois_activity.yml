@@ -1,0 +1,59 @@
+title: Potential Acquire Infrastructure via Suspicious Domain Registration/WHOIS Activity
+id: 6c7e0f61-4a1f-4c08-9b63-9f54e78d8d9b
+status: experimental
+description: Detects likely infrastructure acquisition activity by monitoring common domain registration and WHOIS enumeration tooling/commands executed on endpoints. Maps to MITRE ATT&CK T1583 (Acquire Infrastructure) as preparatory behavior in enterprise environments.
+author: Detection Engineering
+date: 2026-08-11
+references:
+  - https://attack.mitre.org/techniques/T1583/
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_whois_windows_builtin:
+    Image|contains: 'whois.exe'
+  selection_whois_commandline_keywords:
+    CommandLine|contains:
+      - ' whois '
+      - 'whois.exe'
+  selection_registrar_tools:
+    Image|endswith:
+      - '\\gandi.exe'
+      - '\\namecheap.exe'
+      - '\\godaddy.exe'
+      - '\\porkbun.exe'
+      - '\\cloudflare.exe'
+      - '\\aws.exe'
+      - '\\az.exe'
+      - '\\gcloud.exe'
+    condition: 1 of selection_*
+  selection_infra_acquire_cli_keywords:
+    CommandLine|contains:
+      - 'route53'
+      - 'domains register'
+      - 'domains list'
+      - 'domains create'
+      - 'domains registrations'
+      - 'domains registration'
+      - 'domains register-domain'
+      - 'cloudflare zone'
+      - 'cloudflare dns'
+      - 'register-domain'
+      - 'create-domain'
+      - 'domain register'
+      - 'whois'
+  filter_common_admin_cli:
+    ParentImage|endswith:
+      - '\\explorer.exe'
+      - '\\cmd.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+      - '\\WindowsTerminal.exe'
+  condition: (selection_whois_windows_builtin or selection_whois_commandline_keywords or selection_registrar_tools or selection_infra_acquire_cli_keywords) and filter_common_admin_cli
+falsepositives:
+  - Network engineers, IT administrators, or developers performing legitimate domain/WHOIS lookups.
+  - Cloud administrators managing DNS and domains via vendor CLIs.
+level: medium
+tags:
+  - attack.resource_development
+  - attack.t1583
