@@ -1,0 +1,126 @@
+title: Aegisyst - Victim Identity Collection. Information Collection via Common Recon Commands
+id: 8f52c01d-b48f-4a7f-bf2a-d6cf0d04e1b6
+status: experimental
+description: Detects execution of common OS commands used to gather victim identity information (users, groups, domain/AD accounts). Maps to MITRE ATT&CK T1589.
+author: OpenAI (Detection Engineering)
+date: 2026-07-26
+references:
+  - https://attack.mitre.org/techniques/T1589/
+tags:
+  - attack.discovery
+  - attack.t1589
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_image:
+    process|endswith:
+      - '\\whoami.exe'
+      - '\\net.exe'
+      - '\\net1.exe'
+      - '\\nltest.exe'
+      - '\\dsquery.exe'
+      - '\\dsget.exe'
+      - '\\adfind.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+      - '\\cmd.exe' 
+      - '\\wmic.exe' 
+      - '\\wscript.exe' 
+      - '\\cscript.exe' 
+  filter_admin_noise: 
+    process|endswith: 
+      - '\\notepad.exe' 
+      - '\\calc.exe'
+    condition: (selection_image or selection_net or selection_nltest) AND NOT filter_admin_noise
+  selection_net:
+    process|endswith:
+      - '\\net.exe'
+      - '\\net1.exe'
+    process_exec|contains:
+      - ' user'
+      - ' group'
+      - ' localgroup'
+      - ' accounts'
+      - ' view'
+      - ' /domain'
+  selection_nltest:
+    process|endswith: '\\nltest.exe'
+    process_exec|contains:
+      - ' /dclist:'
+      - ' /domain_trusts'
+      - ' /trusted_domains'
+      - ' /user:'
+      - ' /query'
+  selection_dsquery_dsget:
+    process|endswith:
+      - '\\dsquery.exe'
+      - '\\dsget.exe'
+    process_exec|contains:
+      - ' user'
+      - ' group'
+      - ' computer'
+      - ' contact'
+      - ' *'
+      - ' -limit '
+  selection_adfind:
+    process|endswith: '\\adfind.exe'
+    process_exec|contains:
+      - ' -f '
+      - ' -sc '
+      - ' objectcategory='
+      - ' samaccountname'
+      - ' memberof'
+  selection_wmic:
+    process|endswith: '\\wmic.exe'
+    process_exec|contains:
+      - ' useraccount'
+      - ' group'
+      - ' /domain'
+      - ' get '
+    process|endswith:
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+    process_exec|contains:
+      - 'Get-ADUser'
+      - 'Get-ADGroup'
+      - 'Get-ADComputer'
+      - 'Get-LocalUser'
+      - 'Get-LocalGroup'
+      - 'Get-WmiObject Win32_UserAccount'
+      - 'Get-CimInstance Win32_UserAccount'
+      - 'Get-DomainUser'
+      - 'Get-DomainGroup'
+      - 'Get-NetUser'
+      - 'Get-NetGroup'
+      - 'Get-ADPrincipalGroupMembership'
+      - 'Get-ADDomain'
+      - 'Get-ADForest'
+  selection_cmd_wrapper:
+    process|endswith: '\\cmd.exe'
+    process_exec|contains:
+      - ' whoami '
+      - ' net user'
+      - ' net group'
+      - ' net localgroup'
+      - ' nltest '
+      - ' dsquery '
+      - ' adfind '
+  filter_admin_noise: 
+    process|contains|nocase: 
+      - 'notepad' 
+      - 'calc' 
+    condition: (selection_powershell_identity or selection_cmd_wrapper) AND NOT filter_admin_noise
+falsepositives:
+      - Legitimate IT administration, helpdesk troubleshooting, and inventory scripts
+      - Domain join/trust validation and AD maintenance tasks
+      - Security tooling that enumerates accounts (EDR, IAM audits)
+level: medium
+fields:
+      - User
+      - ComputerName
+      - Image
+      - CommandLine
+      - ParentImage
+      - ParentCommandLine
+      - ProcessId
