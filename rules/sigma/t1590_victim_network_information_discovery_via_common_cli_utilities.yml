@@ -1,0 +1,91 @@
+title: T1590 Victim Network Information Discovery via Common CLI Utilities
+id: 7b9d3b75-1d5b-4dd3-8d1c-4a12a46f8d11
+status: experimental
+description: Detects execution of common command-line utilities used to enumerate victim network information (T1590).
+references:
+  - https://attack.mitre.org/techniques/T1590/
+author: Detection Engineering
+date: 2026-08-07
+tags:
+  - attack.discovery
+  - attack.t1590
+logsource:
+  category: process_creation
+  product: windows
+  definition: 'Process creation events such as Windows Security 4688 or Sysmon EventID 1.'
+detection:
+  selection_windows_netsh:
+    process|endswith:
+      - '\\netsh.exe'
+    process_exec|contains:
+      - ' interface ip show'
+      - ' interface ipv4 show'
+      - ' interface ipv6 show'
+      - ' interface show interface'
+      - ' wlan show'
+      - ' winhttp show'
+  selection_windows_ipconfig:
+    process|endswith:
+      - '\\ipconfig.exe'
+    process_exec|contains:
+      - ' /all'
+      - ' /displaydns'
+      - ' /showclassid'
+      - ' /allcompartments'
+  selection_windows_route:
+    process|endswith:
+      - '\\route.exe'
+    process_exec|contains:
+      - ' print'
+  selection_windows_arp:
+    process|endswith:
+      - '\\arp.exe'
+    process_exec|contains:
+      - ' -a'
+  selection_windows_netstat:
+    process|endswith:
+      - '\\netstat.exe'
+    process_exec|contains:
+      - ' -ano'
+      - ' -an'
+      - ' -rn'
+  selection_windows_powershell_network:
+    process|endswith:
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+    process_exec|contains:
+      - 'Get-NetIPConfiguration'
+      - 'Get-NetIPAddress'
+      - 'Get-NetRoute'
+      - 'Get-NetNeighbor'
+      - 'Get-NetAdapter'
+      - 'Get-DnsClientCache'
+      - 'Get-NetTCPConnection'
+      - 'Get-NetUDPEndpoint'
+  selection_windows_wmic_nic:
+    process|endswith:
+      - '\\wmic.exe'
+    process_exec|contains:
+      - ' nicconfig'
+      - ' nic '
+  selection_windows_nltest:
+    process|endswith:
+      - '\\nltest.exe'
+    process_exec|contains:
+      - ' /dclist:'
+      - ' /dsgetdc:'
+      - ' /domain_trusts'
+  selection_windows_nslookup:
+    process|endswith:
+      - '\\nslookup.exe'
+  selection_windows_whois_like:
+    process|endswith:
+      - '\\whoami.exe'
+    process_exec|contains:
+      - ' /all'
+  condition: 1 of selection_windows_*
+falsepositives:
+  - Legitimate administrator and IT troubleshooting activity
+  - Endpoint management, inventory, and monitoring tooling
+  - Network troubleshooting scripts and login scripts
+level: medium
