@@ -1,0 +1,100 @@
+title: Aegisyst - Application Layer Protocol Detection (T1071)
+id: 7c6b9f0d-8dfe-4c9b-b0e0-6dd5b0b7f3c5
+status: experimental
+description: Detects potentially suspicious use of common tools and scripting methods that abuse application layer protocols
+  (HTTP/HTTPS/FTP/SMTP/DNS) for command and control or data transfer. Focuses on Windows process creation telemetry.
+author: OpenAI (Detection Engineering)
+date: 2026-08-11
+references:
+  - https://attack.mitre.org/techniques/T1071/
+tags:
+  - attack.command_and_control
+  - attack.t1071
+  - attack.t1071.001
+  - attack.t1071.002
+  - attack.t1071.003
+  - attack.t1071.004
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_protocol_indicators:
+    CommandLine|contains:
+      - 'http://'
+      - 'https://'
+      - 'ftp://'
+      - 'sftp://'
+      - 'mailto:'
+  selection_lolbins_web:
+    Image|endswith:
+      - '\curl.exe'
+      - '\wget.exe'
+      - '\bitsadmin.exe'
+      - '\certutil.exe'
+      - '\mshta.exe'
+      - '\rundll32.exe'
+      - '\regsvr32.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\cscript.exe'
+      - '\wscript.exe'
+      - '\python.exe'
+      - '\pythonw.exe'
+  selection_cmdline_bitsadmin:
+    Image|endswith: '\bitsadmin.exe'
+    CommandLine|contains:
+      - '/transfer'
+      - '/addfile'
+  selection_cmdline_certutil_urlcache:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains:
+      - '-urlcache'
+      - 'http'
+  selection_cmdline_mshta_url:
+    Image|endswith: '\mshta.exe'
+    CommandLine|contains:
+      - 'http'
+      - 'https'
+  selection_cmdline_regsvr32_sct:
+    Image|endswith: '\regsvr32.exe'
+    CommandLine|contains:
+      - '/i:'
+      - 'http'
+      - 'https'
+  selection_cmdline_rundll32_url:
+    Image|endswith: '\rundll32.exe'
+    CommandLine|contains:
+      - 'http'
+      - 'https'
+      - 'javascript:'
+  selection_cmdline_powershell_web:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+    CommandLine|contains:
+      - 'Invoke-WebRequest'
+      - 'iwr '
+      - 'wget '
+      - 'curl '
+      - 'Invoke-RestMethod'
+      - 'irm '
+      - 'Net.WebClient'
+      - 'DownloadString'
+      - 'DownloadFile'
+      - 'Start-BitsTransfer'
+      - 'System.Net.Http'
+  selection_cmdline_dns_tools:
+    Image|endswith:
+      - '\nslookup.exe'
+      - '\dig.exe'
+    CommandLine|contains:
+      - 'txt'
+      - '-q=txt'
+      - '-type=txt'
+  falsepositives:
+      - Legitimate software installation, update mechanisms, and administrative scripting that download content via HTTP/HTTPS.
+      - IT automation using PowerShell web cmdlets or BITS for software deployment.
+      - Developers using curl/wget/python for API calls.
+      - Network troubleshooting using nslookup/dig querying TXT records.
+level: medium
+    condition: selection_protocol_indicators AND (1 of selection_lolbins_web or selection_cmdline_*)
