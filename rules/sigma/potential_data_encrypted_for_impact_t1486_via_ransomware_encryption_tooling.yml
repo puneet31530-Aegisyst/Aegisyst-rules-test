@@ -49,7 +49,6 @@ detection:
       - ' bootstatuspolicy'
     CommandLine|contains|all:
       - 'set'
-    condition: 1 of selection_*
   selection_ext:
     TargetFilename|endswith:
       - '.lock'
@@ -130,8 +129,8 @@ detection:
       - ' -p'
       - ' -mhe'
       - ' -r'
-  condition: 1 of selection_*
 falsepositives:
   - Administrative maintenance using cipher /w
   - Legitimate bulk compression/archiving activities
 level: medium
+condition: 1 of selection_*
