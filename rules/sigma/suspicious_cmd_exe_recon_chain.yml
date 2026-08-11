@@ -1,0 +1,22 @@
+title: Suspicious cmd.exe Child Process Chain
+id: 2a8f5f1e-1a2b-4c3d-9e8f-000000000002
+status: experimental
+description: Detects Windows cmd.exe spawning suspicious commands (whoami/net/reg chained) often used in initial recon
+author: Spectre AI
+logsource:
+    product: windows
+    service: sysmon
+detection:
+    selection:
+        EventID: 1
+        ParentImage|endswith: '\cmd.exe'
+        Image|endswith:
+            - '\whoami.exe'
+            - '\net.exe'
+            - '\reg.exe'
+            - '\net1.exe'
+    condition: selection
+level: medium
+tags:
+    - attack.execution
+    - attack.t1059.003
