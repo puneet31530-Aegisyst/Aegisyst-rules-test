@@ -1,0 +1,41 @@
+title: T1078 Valid Accounts - Suspicious Interactive Logon Patterns
+id: 3b85b1b6-2d2e-4f6c-8b9b-9c0d7a9f5e3d
+status: experimental
+description: Detects potentially malicious use of valid accounts by identifying unusual or high-risk successful logons such as first-time remote interactive logons, rapid host spread, and administrative account usage from non-standard sources.
+author: OpenAI
+date: 2026-07-26
+references:
+  - https://attack.mitre.org/techniques/T1078/
+logsource:
+  product: windows
+  service: security
+detection:
+  selection_success:
+    EventID: 4624
+    LogonType:
+      - 2   # Interactive
+      - 10  # RemoteInteractive (RDP)
+      - 11  # CachedInteractive
+  filter_machine_accounts:
+    User|endswith: '$'
+  filter_anonymous:
+    User:
+      - 'ANONYMOUS LOGON'
+      - 'LOCAL SERVICE'
+      - 'NETWORK SERVICE'
+  selection_admin_name:
+    User|contains:
+      - 'Administrator' 
+      - 'Admin' 
+  condition: selection_success AND (1 of selection_admin_name or count_distinct(LocationDetails.countryOrRegion) > 3) AND NOT (filter_machine_accounts or filter_anonymous) 
+falsepositives:
+      - Legitimate administrative access (IT support, remote management, helpdesk)
+      - First-time logons after onboarding, password resets, or device reimaging
+      - RDP gateway / jump host usage patterns
+level: medium
+tags:
+      - attack.t1078
+      - attack.initial_access
+      - attack.persistence
+      - attack.privilege_escalation
+      - attack.defense_evasion
