@@ -1,0 +1,102 @@
+title: Potential Host Discovery Commands (T1592 Gather Victim Host Information)
+id: 0c7b0d5e-8cf9-4a31-aad6-7f0b3a6f7b7b
+status: experimental
+description: Detects execution of common Windows utilities and PowerShell commands used to gather victim host information (e.g., systeminfo, hostname, wmic). This activity may indicate reconnaissance consistent with MITRE ATT&CK T1592.
+author: detection-engineer
+date: 2026-07-26
+references:
+  - https://attack.mitre.org/techniques/T1592/
+tags:
+  - attack.discovery
+  - attack.t1592
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_img:
+    EventCode:
+      - 1      # Sysmon
+      - 4688   # Security
+    process|endswith:
+      - '\\systeminfo.exe'
+      - '\\hostname.exe'
+      - '\\whoami.exe'
+      - '\\ipconfig.exe'
+      - '\\nltest.exe'
+      - '\\net.exe'
+      - '\\net1.exe'
+  condition: selection_img
+      - '\\wmic.exe'
+      - '\\powershell.exe'
+      - '\\pwsh.exe'
+  selection_cmd_systeminfo:
+    process_exec|contains:
+      - 'systeminfo'
+  selection_cmd_hostname:
+    process_exec|contains:
+      - 'hostname'
+  selection_cmd_whoami:
+    process_exec|contains:
+      - 'whoami'
+      - 'whoami /all'
+      - 'whoami /groups'
+      - 'whoami /priv'
+  selection_cmd_ipconfig:
+    process_exec|contains:
+      - 'ipconfig'
+      - 'ipconfig /all'
+  selection_cmd_wmic:
+    process_exec|contains:
+      - 'wmic '
+      - ' csproduct '
+      - ' computersystem '
+      - ' os '
+      - ' bios '
+      - ' baseboard '
+      - ' qfe '
+      - ' logicaldisk '
+      - ' nic '
+      - ' product '
+  selection_cmd_nltest:
+    process_exec|contains:
+      - 'nltest '
+      - '/dclist:'
+      - '/domain_trusts'
+      - '/dsgetdc:'
+  selection_cmd_net_local:
+    process_exec|contains:
+      - 'net config workstation'
+      - 'net config server'
+      - 'net accounts'
+      - 'net statistics workstation'
+      - 'net statistics server'
+  selection_cmd_powershell_hostinfo:
+    process_exec|contains:
+      - 'Get-ComputerInfo'
+      - 'Get-WmiObject '
+      - 'Get-CimInstance '
+      - 'Win32_ComputerSystem'
+      - 'Win32_OperatingSystem'
+      - 'Win32_BIOS'
+      - 'Win32_BaseBoard'
+      - 'Win32_QuickFixEngineering'
+      - '[System.Environment]::OSVersion'
+      - '[System.Environment]::MachineName'
+      - '$env:COMPUTERNAME'
+  filter_legit_inventory_tools:
+    parent_process|endswith:
+      - '\\sccmexec.exe'
+      - '\\ccmexec.exe'
+      - '\\smsexec.exe'
+      - '\\taniumclient.exe'
+      - '\\qualysagent.exe'
+      - '\\osqueryd.exe'
+      - '\\rapid7\ir_agent.exe'
+      - '\\sentinelagent.exe'
+      - '\\crowdstrike\csagent.exe'
+      - '\\carbonblack\cb.exe'
+  condition: selection_img AND (1 of selection_cmd_*) AND NOT filter_legit_inventory_tools
+falsepositives:
+  - Legitimate IT administration, troubleshooting, and inventory collection scripts
+  - Endpoint management/monitoring agents executing discovery commands
+level: medium
