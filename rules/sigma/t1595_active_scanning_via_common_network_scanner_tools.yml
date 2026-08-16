@@ -1,0 +1,130 @@
+title: T1595 Active Scanning via Common Network Scanner Tools
+detection_logic_description: |
+  This rule fires when the primary detection selectors match the observed activity for the mapped MITRE technique. It suppresses common Windows OS hosting processes and well-known safe utility command lines to keep the false-positive rate low in typical enterprise environments. Tune the filter_common_os_* blocks in your Log Profile if legitimate admin tooling in your environment triggers spurious matches.
+id: 4b8a3b92-8a7a-4d15-9e6a-6dd3f2b1e4c1
+status: experimental
+description: Detects active network scanning within an enterprise environment by identifying the execution of common scanner tools and built-in utilities for host and port discovery. This rule covers both security and Sysmon EventCode 4688 and 1, respectively, looking for specific processes and command-line arguments known for scanning activities. Filtration of known administrative tools is included to reduce false positives.
+author: detection-engineer
+date: 2026-07-26
+references:
+  - https://attack.mitre.org/techniques/T1595/
+tags:
+  - attack.reconnaissance
+  - attack.t1595
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_eventid_security:
+    EventCode: 4688
+  selection_eventid_sysmon:
+    EventCode: 1
+  selection_scanner_images:
+    process|endswith:
+      - '\nmap.exe'
+      - '\masscan.exe'
+      - '\zmap.exe'
+      - '\rustscan.exe'
+      - '\naabu.exe'
+      - '\fscan.exe'
+      - '\netscan.exe'
+      - '\advanced_ip_scanner.exe'
+      - '\angryipscanner.exe'
+      - '\psping.exe'
+      - '\hping3.exe'
+      - '\nping.exe'
+      - '\netdiscover.exe'
+      - '\arp-scan.exe'
+      - '\nc.exe'
+      - '\ncat.exe'
+      - '\netcat.exe'
+      - '\telnet.exe'
+  selection_scanner_commandline:
+    process_exec|contains:
+      - ' -sS'
+      - ' -sT'
+      - ' -sU'
+      - ' -sV'
+      - ' -O'
+      - ' -Pn'
+      - ' -sn'
+      - ' --top-ports'
+      - ' -p-'
+      - ' --rate '
+      - ' --max-rate '
+      - ' --min-rate '
+      - ' --ping '
+      - ' --arp '
+      - ' --interface '
+      - ' -PR'
+      - ' -PE'
+      - ' -PS'
+      - ' -PA'
+      - ' -PU'
+      - ' -traceroute'
+      - ' -iL '
+      - ' -oX '
+      - ' -oN '
+      - ' -oG '
+      - ' -oA '
+  selection_builtin_discovery:
+    process|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\cmd.exe'
+      - '\wmic.exe'
+      - '\ping.exe'
+      - '\arp.exe'
+      - '\net.exe'
+      - '\netsh.exe'
+      - '\tracert.exe'
+      - '\pathping.exe'
+      - '\nslookup.exe'
+    process_exec|contains:
+      - 'Test-NetConnection'
+      - 'tnc '
+      - 'Test-Connection'
+      - '1..'
+      - 'ForEach-Object'
+      - ' -Port '
+      - ' -ComputerName '
+      - 'Get-NetTCPConnection'
+      - 'Get-NetUDPEndpoint'
+      - 'Resolve-DnsName'
+      - 'nslookup '
+      - 'tracert '
+      - 'pathping '
+      - 'arp -a'
+      - 'wmic /node:'
+      - 'net view'
+      - 'netsh advfirewall firewall add rule'
+  filter_common_admin_tools:
+    process|endswith:
+      - '\sccmexec.exe'
+      - '\ccmexec.exe'
+      - '\pdqdeploy.exe'
+      - '\pdqinventory.exe'
+      - '\solarwindsdiscovery.exe'
+      - '\ncentral.exe'
+      - '\kaseyaagent.exe'
+  filter_common_os_parent:
+    ParentImage|endswith:
+      - '\services.exe'
+      - '\svchost.exe'
+      - '\taskhostw.exe'
+      - '\wininit.exe'
+      - '\wuauclt.exe'
+  filter_common_os_cmdline:
+    CommandLine|contains:
+      - 'MpCmdRun.exe'
+      - 'SoftwareDistribution\Download'
+      - 'Microsoft\Windows\WindowsUpdate'
+      - 'MsSense.exe'
+      - '\WmiPrvSE.exe'
+  condition: (((selection_eventid_security or selection_eventid_sysmon) and (selection_scanner_images or (selection_scanner_commandline and selection_scanner_images) or selection_builtin_discovery)) and not filter_common_admin_tools) and not filter_common_os_parent and not filter_common_os_cmdline
+falsepositives:
+  - Authorized vulnerability scanning (e.g., IT/SecOps scanners)
+  - Network troubleshooting by administrators
+  - Asset discovery/inventory agents and RMM tooling
+  - Penetration testing with prior approval
+level: medium
